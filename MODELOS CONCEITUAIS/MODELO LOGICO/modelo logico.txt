@@ -1,0 +1,70 @@
+-- ============================================================
+-- MODELO LÓGICO - Plataforma de Ensaio Colaborativo (bandas)
+-- Baseado no DER da Talita
+-- ============================================================
+
+CREATE TABLE usuario (
+    id     BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome   VARCHAR(100) NOT NULL,
+    email  VARCHAR(150) NOT NULL UNIQUE,
+    senha  VARCHAR(255) NOT NULL  -- salvar sempre com hash (ex: bcrypt), nunca texto puro
+);
+
+CREATE TABLE banda (
+    id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome              VARCHAR(100) NOT NULL,
+    id_representante  BIGINT NOT NULL,
+    -- "Row 3" do seu DER ainda não definida (descrição? data de criação?)
+    CONSTRAINT fk_banda_representante FOREIGN KEY (id_representante) REFERENCES usuario(id)
+);
+
+CREATE TABLE integrante (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    banda_id    BIGINT NOT NULL,
+    usuario_id  BIGINT NOT NULL,
+    papel       VARCHAR(50),  -- ex: "guitarra base", "baixo", "vocal"
+    CONSTRAINT fk_integrante_banda   FOREIGN KEY (banda_id)   REFERENCES banda(id),
+    CONSTRAINT fk_integrante_usuario FOREIGN KEY (usuario_id) REFERENCES usuario(id),
+    CONSTRAINT uq_integrante_banda_usuario UNIQUE (banda_id, usuario_id) -- evita duplicar o mesmo usuário na mesma banda
+);
+
+CREATE TABLE repertorio (
+    id        BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome      VARCHAR(100) NOT NULL,
+    banda_id  BIGINT NOT NULL,  -- estava faltando no DER; realiza "BANDA possui N REPERTÓRIO"
+    -- "Row 2" e "Row 3" do seu DER ainda não definidas
+    CONSTRAINT fk_repertorio_banda FOREIGN KEY (banda_id) REFERENCES banda(id)
+);
+
+CREATE TABLE musica (
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome           VARCHAR(100) NOT NULL,
+    duracao        INT,          -- em segundos
+    tom            VARCHAR(10),
+    bpm            INT,
+    repertorio_id  BIGINT NOT NULL,  -- estava faltando; realiza "REPERTÓRIO possui N MÚSICA"
+    CONSTRAINT fk_musica_repertorio FOREIGN KEY (repertorio_id) REFERENCES repertorio(id)
+);
+
+CREATE TABLE faixa_audio (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome         VARCHAR(100) NOT NULL,
+    storage_key  VARCHAR(255) NOT NULL,  -- referência do arquivo no storage externo (não guardar o áudio no banco)
+    duracao      INT,
+    musica_id    BIGINT NOT NULL,  -- estava faltando; realiza "MÚSICA possui N FAIXA DE ÁUDIO"
+    usuario_id   BIGINT NOT NULL,  -- estava faltando; realiza "USUÁRIO envia N FAIXA DE ÁUDIO"
+    CONSTRAINT fk_faixa_musica  FOREIGN KEY (musica_id)  REFERENCES musica(id),
+    CONSTRAINT fk_faixa_usuario FOREIGN KEY (usuario_id) REFERENCES usuario(id)
+);
+
+CREATE TABLE comentario (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    comentario      VARCHAR(500) NOT NULL,
+    timestamp_seg   INT NOT NULL,  -- segundo exato da faixa onde o comentário se aplica
+    autor_id        BIGINT NOT NULL,  -- estava faltando; realiza "USUÁRIO faz N COMENTÁRIO"
+    destinatario_id BIGINT,           -- opcional: comentário pode ser geral ou dirigido a alguém
+    faixa_audio_id  BIGINT NOT NULL,  -- estava faltando; realiza "COMENTÁRIO possui 1 FAIXA DE ÁUDIO"
+    CONSTRAINT fk_comentario_autor        FOREIGN KEY (autor_id)        REFERENCES usuario(id),
+    CONSTRAINT fk_comentario_destinatario FOREIGN KEY (destinatario_id) REFERENCES usuario(id),
+    CONSTRAINT fk_comentario_faixa        FOREIGN KEY (faixa_audio_id)  REFERENCES faixa_audio(id)
+);
